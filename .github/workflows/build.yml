@@ -1,0 +1,68 @@
+# Builds the image (tests run inside the Dockerfile), pushes ghcr.io/jaenster/degiro-mcp:<sha>, then
+# pins that tag in hertzner-k8s so ArgoCD rolls it out. GitHub runners are amd64, matching the nodes.
+# The gitops push uses a deploy key (secret GITOPS_DEPLOY_KEY) that can write to hertzner-k8s only.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Manual rebuild + redeploy of main.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/jaenster/degiro-mcp
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request' && github.repository == 'jaenster/degiro-mcp'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && github.repository == 'jaenster/degiro-mcp' }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+  deploy:
+    needs: image
+    if: github.event_name != 'pull_request' && github.repository == 'jaenster/degiro-mcp'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: jaenster/hertzner-k8s
+          ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY }}
+
+      - name: Pin the new image in gitops
+        run: |
+          f=gitops/projects/degiro/deployment.yaml
+          sed -i -E "s#^(\s*image: )ghcr.io/jaenster/degiro-mcp:.*#\1${IMAGE}:${GITHUB_SHA}#" "$f"
+          git diff --quiet && { echo "already at ${GITHUB_SHA}"; exit 0; }
+          git config user.name "degiro-mcp CI"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "degiro: deploy ${GITHUB_SHA::7}"
+          for i in 1 2 3 4 5; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+          done
+          exit 1

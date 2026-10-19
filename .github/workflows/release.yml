@@ -1,0 +1,34 @@
+# Tagging vX.Y.Z builds the binaries for macOS, Linux and Windows and attaches them to a release.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - run: zig build test
+      - name: Build
+        run: |
+          mkdir dist
+          for t in aarch64-macos x86_64-macos x86_64-linux-musl aarch64-linux-musl x86_64-windows; do
+            zig build -Dtarget=$t -Doptimize=ReleaseSafe --prefix out/$t
+            if [ "$t" = x86_64-windows ]; then
+              (cd out/$t/bin && zip -q ../../../dist/degiro-mcp-$t.zip degiro-mcp.exe)
+            else
+              tar -czf dist/degiro-mcp-$t.tar.gz -C out/$t/bin degiro-mcp
+            fi
+          done
+          (cd dist && sha256sum * > SHA256SUMS)
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

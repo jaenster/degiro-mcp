@@ -1,0 +1,13 @@
+.{
+    .name = .degiro_mcp,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.16.0",
+    .fingerprint = 0x794eea8a31cdd7c1,
+    .dependencies = .{
+        .toon = .{
+            .url = "git+https://github.com/jaenster/toon#b4c498811f10c152f0c00e859221219c613a3b34",
+            .hash = "toon-0.1.0-oXRK58TSAwCUTQlhe-tKyEid2Ry4aHss_QngEO0vr-NH",
+        },
+    },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+}
