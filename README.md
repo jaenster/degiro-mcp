@@ -35,6 +35,24 @@ or in Claude Desktop's `claude_desktop_config.json`:
 `DEGIRO_TOTP_SECRET` is the seed of your DeGiro two-factor setup (base32, or the whole `otpauth://`
 URI from the QR code), not a six-digit code. Add `DEGIRO_TRADING=true` to enable the order tools.
 
+### Without secrets in the config
+
+Pasting your password and TOTP seed into an MCP config leaves them in plaintext on disk. On macOS,
+[hush](https://github.com/jaenster/hush) keeps them encrypted and injects them only into the
+process:
+
+```sh
+hush set degiro DEGIRO_USERNAME you
+hush set degiro DEGIRO_PASSWORD '...'
+hush set degiro DEGIRO_TOTP_SECRET '...'   # or 'op://Private/DeGiro/...' to read from 1Password
+
+claude mcp add degiro -- hush --env=degiro -- /path/to/degiro-mcp stdio
+```
+
+For Claude Desktop, use `"command": "/opt/homebrew/bin/hush"` with
+`"args": ["--env=degiro", "--", "/path/to/degiro-mcp", "stdio"]` and no `env`. Desktop apps don't
+see your shell's `PATH`, so the full path is needed.
+
 ## Tools
 
 | Tool | What it does |
