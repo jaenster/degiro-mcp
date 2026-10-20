@@ -7,6 +7,12 @@ prices, and optionally place orders, from Claude or any other MCP client. Tool r
 Unofficial: it uses DeGiro's private web API, which can change or break at any time. Hobby project,
 use at your own risk.
 
+To have your agent set it up, paste this:
+
+```
+Fetch and follow the instructions to set me up with degiro-mcp from https://raw.githubusercontent.com/jaenster/degiro-mcp/main/SETUP.md
+```
+
 ## Local (stdio)
 
 Grab a binary from the [releases](https://github.com/jaenster/degiro-mcp/releases) or build one with
